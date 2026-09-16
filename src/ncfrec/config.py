@@ -55,7 +55,7 @@ class ModelConfig:
 class TrainingConfig:
     """Optimization parameters used by the training notebook."""
 
-    epochs: int = 5
+    epochs: int = 25
     batch_size: int = 1024
     learning_rate: float = 1e-3
     weight_decay: float = 1e-5
