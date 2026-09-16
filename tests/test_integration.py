@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import nbformat
 import pandas as pd
@@ -11,7 +12,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from ncfrec.artifacts import save_artifact
-from ncfrec.config import ModelConfig
+from ncfrec.config import ModelConfig, TrainingConfig
 from ncfrec.data import InteractionDataset, prepare_data, sample_training_instances
 from ncfrec.model import NeuMF
 from ncfrec.training import evaluate_ranking, set_seed, train_one_epoch
@@ -24,9 +25,45 @@ def test_notebook_code_cells_compile() -> None:
     nbformat.validate(notebook)
     code_cells = [cell.source for cell in notebook.cells if cell.cell_type == "code"]
 
-    assert len(code_cells) == 12
+    assert code_cells
+    notebook_source = "\n".join(code_cells)
+    assert "TrainingConfig.from_env(" in notebook_source
+    assert 'os.getenv("NCFREC_EPOCHS", "5")' not in notebook_source
     for index, source in enumerate(code_cells):
         compile(source, f"notebook-cell-{index}", "exec")
+
+
+def test_notebook_training_cell_honors_selected_epoch_count() -> None:
+    notebook = nbformat.read(ROOT / "notebooks" / "ncfrec_training.ipynb", as_version=4)
+    training_source = next(
+        cell.source
+        for cell in notebook.cells
+        if cell.cell_type == "code" and "for epoch in range" in cell.source
+    )
+    interactions = pd.DataFrame({"user_idx": [0], "item_idx": [0]})
+    prepared = SimpleNamespace(train=interactions, validation=interactions)
+    calls: list[int] = []
+
+    def fake_train_one_epoch(*_args: object) -> float:
+        calls.append(len(calls) + 1)
+        return 0.1
+
+    scope = {
+        "pd": pd,
+        "prepared": prepared,
+        "training_config": TrainingConfig(epochs=3),
+        "model": object(),
+        "training_loader": object(),
+        "optimizer": object(),
+        "device": torch.device("cpu"),
+        "train_one_epoch": fake_train_one_epoch,
+        "evaluate_ranking": lambda *_args: {"hit_rate@10": 0.0, "ndcg@10": 0.0},
+    }
+
+    exec(training_source, scope)  # noqa: S102 - execute the checked-in notebook cell as an integration test
+
+    assert calls == [1, 2, 3]
+    assert scope["history_frame"]["epoch"].tolist() == [1, 2, 3]
 
 
 def test_bounded_train_export_reload_and_cli_smoke(tmp_path: Path) -> None:
