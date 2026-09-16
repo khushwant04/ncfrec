@@ -46,7 +46,7 @@ artifacts/movielens-100k-neumf/
 └── model.pt
 ```
 
-The default is five epochs. For a quick execution check, start Jupyter with `NCFREC_EPOCHS=1` in its environment.
+The epoch default comes from `TrainingConfig` in `src/ncfrec/config.py` (currently 25). To override it for one run, start Jupyter with `NCFREC_EPOCHS=1` in its environment. After editing Python configuration, restart the notebook kernel and run all cells so Python reloads the module.
 
 ## Test like an application
 

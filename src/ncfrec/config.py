@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -60,6 +61,14 @@ class TrainingConfig:
     learning_rate: float = 1e-3
     weight_decay: float = 1e-5
     evaluation_k: int = 10
+
+    @classmethod
+    def from_env(cls, **overrides: Any) -> TrainingConfig:
+        """Build config using class defaults unless environment variables override them."""
+        epoch_override = os.getenv("NCFREC_EPOCHS")
+        if epoch_override is not None:
+            overrides["epochs"] = int(epoch_override)
+        return cls(**overrides)
 
     def __post_init__(self) -> None:
         if self.epochs < 1 or self.batch_size < 1:
