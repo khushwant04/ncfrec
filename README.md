@@ -36,6 +36,14 @@ source .venv/bin/activate
 python -m pip install -e ".[dev]"
 ```
 
+On a machine without a GPU, install the CPU-only torch wheel first to avoid downloading the CUDA
+build (this is what CI does):
+
+```bash
+python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+python -m pip install -e ".[dev]"
+```
+
 ## Train in the notebook
 
 Open `notebooks/ncfrec_training.ipynb`, select the project environment, and run all cells. The notebook downloads MovieLens into ignored `data/` storage and exports this ignored artifact directory:
@@ -47,6 +55,20 @@ artifacts/movielens-100k-neumf/
 ```
 
 The epoch default comes from `TrainingConfig` in `src/ncfrec/config.py` (currently 25). To override it for one run, start Jupyter with `NCFREC_EPOCHS=1` in its environment. After editing Python configuration, restart the notebook kernel and run all cells so Python reloads the module.
+
+### Recorded results
+
+The committed notebook outputs come from a short **5-epoch** run (the printed `TrainingConfig` shows
+`epochs=5`) on MovieLens 100K with 32-dimensional embeddings and 4 negatives per positive:
+
+| split | Hit Rate@10 | NDCG@10 |
+|---|---|---|
+| validation (epoch 5) | 0.0849 | 0.0387 |
+| test | 0.0690 | 0.0311 |
+
+Each metric ranks one held-out positive per user (942 users) against the full catalog minus that
+user's already-seen movies. Treat these as a pipeline sanity check, not a tuned result; the package
+default is 25 epochs.
 
 ## Test like an application
 
